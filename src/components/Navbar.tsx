@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { auth } from "@/auth";
+import { handleSignOut } from "@/app/actions/authActions";
 
 import { FloatingDock } from "@/components/ui/floating-dock";
 import {
@@ -12,9 +14,10 @@ import {
   IconBrowser,
 } from "@tabler/icons-react";
 
-const Navbar: React.FC = () => {
+const Navbar: React.FC = async () => {
+  const session = await auth();
+  console.log({ session });
   const [scrolled, setScrolled] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
 
   const links = [
     {
@@ -105,7 +108,7 @@ const Navbar: React.FC = () => {
         <FloatingDock items={links} />
 
         <div className="flex items-center space-x-4">
-          {!isSignedIn ? (
+          {!session ? (
             <>
               <Link href="/sign-in">
               <button className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium rounded-lg group bg-gradient-to-br from-orange-400 via-red-300 to-yellow-200 group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 text-white hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-red-200 dark:focus:ring-red-400">
@@ -116,15 +119,15 @@ const Navbar: React.FC = () => {
               </Link>
             </>
           ) : (
-            <Link href="/profile">
-              <Image
-                src="/user.png"
-                alt="User Profile"
-                width={40}
-                height={40}
-                className="rounded-full hover:opacity-80 transition-opacity duration-300"
-              />
-            </Link>
+            <>
+              <form action={handleSignOut}>
+                <button className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium rounded-lg group bg-gradient-to-br from-orange-400 via-red-300 to-yellow-200 group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 text-white hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-red-200 dark:focus:ring-red-400">
+                      <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                      Sign Out
+                      </span>
+                </button>
+              </form>
+            </>
           )}
         </div>
       </div>
