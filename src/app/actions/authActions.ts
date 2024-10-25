@@ -1,0 +1,96 @@
+"use server";
+
+import { signIn, signOut } from "@/auth"
+import { signUpSchema } from "@/schemas/signUpSchema";
+import { AuthError } from "next-auth";
+import { sendVerificationEmail } from '@/helpers/sendVerificationEmail';
+
+import prisma from "@/lib/prisma";
+import bcryptjs from "bcryptjs";
+
+export async function handleCredentialsSignIn(email: string, password: string): Promise<AuthError | undefined> {
+    try {
+        await signIn("credentials", {email, password, redirectTo: "/"});
+    } catch (error) {
+        if(error instanceof AuthError) {
+            switch(error.type) {
+                case 'CredentialsSignin':
+                    return {
+                        type: error.type,
+                        name: error.name,
+                        message: 'Invalid email or password'
+                    }
+                default:
+                    return {
+                        type: error.type,
+                        name: error.name,
+                        message: 'An error occurred'
+                    }
+            }
+        }
+        throw error;
+    }
+}
+
+export async function handleSignOut() {
+    await signOut();
+}
+
+export async function handleSignUp({ username, email, password, confirmPassword, referralCode}: {
+    username: string,
+    email: string,
+    password: string,
+    confirmPassword: string,
+    referralCode: string,
+}) {
+    try {
+        const parsedCredentials = signUpSchema.safeParse({ username, email, password, confirmPassword, referralCode });
+        if (!parsedCredentials.success) {
+            return { success: false, message: "Invalid data." };
+        }
+
+        if (referralCode !== process.env.REFERRAL_CODE) {
+            return { success: false, message: "Invalid Referral Code." };
+        }
+
+
+        const existingUser = await prisma.user.findUnique({
+            where: {
+                email,
+            },
+        });
+
+        if (existingUser) {
+            return { success: false, message: "Email already exists. Login to continue." };
+        }
+
+        let verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+        let verifyCodeExpiry = new Date(Date.now() + 3600000);
+
+        // hash the password
+        const hashedPassword = await bcryptjs.hash(password, 10);
+        await prisma.user.create({
+            data: {
+                username,
+                email,
+                password: hashedPassword,
+                emailVerifyCode: verifyCode,
+                verifyCodeExpiry,
+            },
+        });
+
+        const emailResponse = await sendVerificationEmail(
+            email,
+            username,
+            verifyCode
+        );
+        if (!emailResponse.success) {
+            return { success: false, message: emailResponse.message}
+        }
+
+        return { success: true, message: "Account created successfully." };
+    } catch (error) {
+        console.error("Error creating account:", error);
+        return { success: false, message: "An unexpected error occurred. Please try again." };
+    }
+}
