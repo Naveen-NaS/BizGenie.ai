@@ -44,11 +44,6 @@ export async function handleSignUp({ username, email, password, confirmPassword,
     referralCode: string,
 }) {
     try {
-        const parsedCredentials = signUpSchema.safeParse({ username, email, password, confirmPassword, referralCode });
-        if (!parsedCredentials.success) {
-            return { success: false, message: "Invalid data." };
-        }
-
         if (referralCode !== process.env.REFERRAL_CODE) {
             return { success: false, message: "Invalid Referral Code." };
         }
@@ -85,6 +80,7 @@ export async function handleSignUp({ username, email, password, confirmPassword,
             verifyCode
         );
         if (!emailResponse.success) {
+            console.error("Error sending email:", emailResponse.message);
             return { success: false, message: emailResponse.message}
         }
 
