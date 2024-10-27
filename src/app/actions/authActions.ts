@@ -49,30 +49,53 @@ export async function handleSignUp({ username, email, password, confirmPassword,
         }
 
 
-        const existingUser = await prisma.user.findUnique({
+        const existingUserByEmail = await prisma.user.findUnique({
             where: {
                 email,
             },
         });
 
-        if (existingUser) {
-            return { success: false, message: "Email already exists. Login to continue." };
+        const existingUsername = await prisma.user.findUnique({
+            where: {
+                username,
+            },
+        });
+
+        if (existingUsername) {
+            return { success: false, message: "Username already exists. Please choose another." };
         }
 
         let verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
         let verifyCodeExpiry = new Date(Date.now() + 3600000);
 
-        // hash the password
-        const hashedPassword = await bcryptjs.hash(password, 10);
-        await prisma.user.create({
-            data: {
-                username,
-                email,
-                password: hashedPassword,
-                emailVerifyCode: verifyCode,
-                verifyCodeExpiry,
-            },
-        });
+        if (existingUserByEmail) {
+            if(existingUserByEmail.isEmailVerified) {
+                return { success: false, message: "Email already in use. Please sign in." };
+            } else {
+                const hashedPassword = await bcryptjs.hash(password, 10);
+                await prisma.user.update({
+                    where: {
+                        email,
+                    },
+                    data: {
+                        password: hashedPassword,
+                        emailVerifyCode: verifyCode,
+                        verifyCodeExpiry,
+                    },
+                });
+            }
+        } else {
+            const hashedPassword = await bcryptjs.hash(password, 10);
+            await prisma.user.create({
+                data: {
+                    username,
+                    email,
+                    password: hashedPassword,
+                    emailVerifyCode: verifyCode,
+                    verifyCodeExpiry,
+                },
+            });
+        }
 
         const emailResponse = await sendVerificationEmail(
             email,
