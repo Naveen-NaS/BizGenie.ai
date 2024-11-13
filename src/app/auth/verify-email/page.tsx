@@ -36,7 +36,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 
-const VerifyEmail = (username: string, email: string, password: string) => {
+const VerifyEmail = (email: string, password: string) => {
   const [countdown, setCountdown] = useState(60);
   const [isResendEnabled, setIsResendEnabled] = useState(false);
 

@@ -64,7 +64,7 @@ const VerifyEmail = ({ username, email, password }: VerifyEmailProps) => {
       const data = await response.json();
       console.log(data);
       if(response.ok) {
-        await handleCredentialsSignIn(email, password);
+        await handleCredentialsSignIn({email, password});
         setGlobalMessage(data.message);
         setGlobalSuccess("true");
       } else {
