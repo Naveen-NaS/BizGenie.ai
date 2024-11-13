@@ -8,7 +8,10 @@ import { sendVerificationEmail } from '@/helpers/sendVerificationEmail';
 import prisma from "@/lib/prisma";
 import bcryptjs from "bcryptjs";
 
-export async function handleCredentialsSignIn(email: string, password: string): Promise<AuthError | undefined> {
+export async function handleCredentialsSignIn({ email, password }: {
+    email: string,
+    password: string,
+}): Promise<AuthError | undefined> {
     try {
         await signIn("credentials", {email, password, redirectTo: "/"});
     } catch (error) {
@@ -36,12 +39,14 @@ export async function handleSignOut() {
     await signOut();
 }
 
-export async function handleSignUp({ username, email, password, confirmPassword, referralCode}: {
+export async function handleCredentialsSignUp({ username, email, password, confirmPassword, referralCode, verifyCode, verifyCodeExpiry}: {
     username: string,
     email: string,
     password: string,
     confirmPassword: string,
     referralCode: string,
+    verifyCode: string,
+    verifyCodeExpiry: Date,
 }) {
     try {
         if (referralCode !== process.env.REFERRAL_CODE) {
@@ -64,9 +69,6 @@ export async function handleSignUp({ username, email, password, confirmPassword,
         if (existingUsername) {
             return { success: false, message: "Username already exists. Please choose another." };
         }
-
-        let verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-        let verifyCodeExpiry = new Date(Date.now() + 3600000);
 
         if (existingUserByEmail) {
             if(existingUserByEmail.isEmailVerified) {
@@ -111,5 +113,51 @@ export async function handleSignUp({ username, email, password, confirmPassword,
     } catch (error) {
         console.error("Error creating account:", error);
         return { success: false, message: "An unexpected error occurred. Please try again." };
+    }
+}
+
+export async function handelResendVerficationCode(email: string) {
+    try {
+        const existingUserByEmail = await prisma.user.findUnique({
+            where: {
+                email,
+            },
+        });
+
+        if (!existingUserByEmail) {
+            return { success: false, message: "Email not found." };
+        }
+
+        if (existingUserByEmail.isEmailVerified) {
+            return { success: false, message: "Email already verified." };
+        }
+
+        let verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+        let verifyCodeExpiry = new Date(Date.now() + 3600000);
+
+        await prisma.user.update({
+            where: {
+                email,
+            },
+            data: {
+                emailVerifyCode: verifyCode,
+                verifyCodeExpiry,
+            },
+        });
+
+        const emailResponse = await sendVerificationEmail(
+            email,
+            existingUserByEmail.username,
+            verifyCode
+        );
+        if (!emailResponse.success) {
+            console.error("Error sending email:", emailResponse.message);
+            return { success: false, message: emailResponse.message}
+        }
+
+        return { success: true, message: "Verification code resent." };
+    } catch (error) {
+        console.error("Error resending verification code:", error);
+        return { success: false, message: "An unexpected error occurred. Please try again."};
     }
 }

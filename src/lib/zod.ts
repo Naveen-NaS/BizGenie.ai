@@ -1,4 +1,5 @@
-import { object, string } from "zod";
+import { verify } from "crypto";
+import { date, object, string } from "zod";
 
 export const signInSchema = object({
   email: string({ required_error: 'Email is required' })
@@ -23,7 +24,9 @@ export const signUpSchema = object({
           .min(1, "Confirm password is required")
           .min(8, "Password must be more than 8 characters")
           .max(32, "Password must be less than 32 characters"),
-  referralCode: string().regex(/^\d{5}$/, { message: "Code must be 5 digits" })
+  referralCode: string().regex(/^\d{5}$/, { message: "Code must be 5 digits" }),
+  verifyCode: string(),
+  verifyCodeExpiry: date(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

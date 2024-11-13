@@ -1,33 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
+import Image from "next/image";
+
+
 import { set, z } from "zod";
 import { signUpSchema } from "@/lib/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { handleCredentialsSignIn, handleCredentialsSignUp, handelResendVerficationCode } from "@/app/actions/authActions";
 
-import GlobalMessage from "@/components/GlobalMessage";
-import LoadingButton from "@/components/LoadingButton";
 
-import { handleCredentialsSignIn, handleSignUp } from "@/app/actions/authActions";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
 import { HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import Image from "next/image";
+
+import GlobalMessage from "@/components/GlobalMessage";
+import VerifyEmail from "@/components/EmailVerification";
+
 
 export default function SignUp() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-
+  const [email, setEmail] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
+
   const [globalMessage, setGlobalMessage] = useState("");
   const [globalSuccess, setGlobalSuccess] = useState("none");
+  
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+  const [countdown, setCountdown] = useState(60);
+  const [isResendEnabled, setIsResendEnabled] = useState(false);
 
+
+  // Sign-up form logic
   const {
     register,
     handleSubmit,
@@ -40,16 +51,21 @@ export default function SignUp() {
       password: "",
       confirmPassword: "",
       referralCode: "",
+      verifyCode: Math.floor(100000 + Math.random() * 900000).toString(),
+      verifyCodeExpiry: new Date(Date.now() + 3600000),
     },
   });
 
+
+  // Sign-up submit logic
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     try {
       console.log("Values: ", values);
-      const result: ServerActionResponse = await handleSignUp(values);
+      const result: ServerActionResponse = await handleCredentialsSignUp(values);
       if (result.success) {
         setUsername(values.username);
         setPassword(values.password);
+        setEmail(values.email);
         setIsSuccess(true);
         setGlobalMessage(result.message);
         setGlobalSuccess("true");
@@ -66,6 +82,91 @@ export default function SignUp() {
     }
   };
 
+
+  // Countdown logic
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsResendEnabled(true);
+    }
+  }, [countdown]);
+
+
+  // Resend verification code logic
+  const handleResendClick = async () => {
+    const result: ServerActionResponse = await handelResendVerficationCode(email);
+    if (result.success) {
+      setCountdown(60);
+      setIsResendEnabled(false);
+      setGlobalMessage(result.message);
+      setGlobalSuccess("true");
+    } else {
+      setGlobalMessage(result.message);
+      setGlobalSuccess("false");
+    }
+  };
+
+
+  // OTP input handling logic
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const { key } = e;
+      if (!/^[0-9]$/.test(key) && key !== 'Backspace' && key !== 'Delete' && key !== 'Tab' && !e.metaKey) {
+        e.preventDefault();
+      }
+
+      if (key === 'Delete' || key === 'Backspace') {
+        const index = inputsRef.current.indexOf(e.target as HTMLInputElement);
+        if (index > 0) {
+          inputsRef.current[index - 1]!.value = '';
+          inputsRef.current[index - 1]!.focus();
+        }
+      }
+    };
+
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const index = inputsRef.current.indexOf(target);
+      if (target.value && index < inputsRef.current.length - 1) {
+        inputsRef.current[index + 1]!.focus();
+      }
+    };
+
+    const handleFocus = (e: FocusEvent) => {
+      (e.target as HTMLInputElement).select();
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const text = e.clipboardData?.getData('text');
+      if (text && /^[0-9]{4}$/.test(text)) {
+        text.split('').forEach((char, i) => {
+          if (inputsRef.current[i]) inputsRef.current[i]!.value = char;
+        });
+      }
+    };
+
+    inputsRef.current.forEach((input) => {
+      input?.addEventListener('input', handleInput);
+      input?.addEventListener('keydown', handleKeyDown);
+      input?.addEventListener('focus', handleFocus);
+      input?.addEventListener('paste', handlePaste);
+    });
+
+    return () => {
+      inputsRef.current.forEach((input) => {
+        input?.removeEventListener('input', handleInput);
+        input?.removeEventListener('keydown', handleKeyDown);
+        input?.removeEventListener('focus', handleFocus);
+        input?.removeEventListener('paste', handlePaste);
+      });
+    };
+  }, []);
+
+
+  // Email Verification logic
   const verifyEmailCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -80,7 +181,7 @@ export default function SignUp() {
       const data = await response.json();
       console.log(data);
       if(response.ok) {
-        await handleCredentialsSignIn(username, password);
+        await handleCredentialsSignIn({email, password});
         setGlobalMessage(data.message);
         setGlobalSuccess("true");
       } else {
@@ -93,6 +194,7 @@ export default function SignUp() {
       setGlobalSuccess("false");
     }
   };
+
 
   return (
     <div className="h-[100vh] overflow-y-auto">
@@ -243,62 +345,14 @@ export default function SignUp() {
                 <p className="text-neutral-100 text-l max-w-sm dark:text-neutral-300">
                   Already registered?{" "}
                   <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-violet-500">
-                    <Link href="/sign-in">Sign-In</Link>
+                    <Link href="/auth/sign-in">Sign-In</Link>
                   </span>
                 </p>
               </div>
             </form>
           </div>
         ) : (
-          <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-6 shadow-input bg-slate-800 dark:bg-black">
-            <h1 className="font-bold text-2xl md:text-3xl text-neutral-200 dark:text-neutral-200 text-center md:text-left">
-              Verify{" "}
-              <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
-                Email
-              </span>
-            </h1>
-            <p className="text-neutral-100 text-sm max-w-sm mt-2 dark:text-neutral-300 text-center md:text-left">
-              We have sent a verification code to your email address. Please enter the code to verify your account.
-            </p>
-
-            <form className="my-8" onSubmit={verifyEmailCode}>
-              <LabelInputContainer className="mb-4">
-                <Label htmlFor="verifycode" className="text-neutral-200 mb-1.5">
-                  Verification Code
-                </Label>
-                <Input
-                  id="verifycode"
-                  placeholder="Enter code"
-                  type="verifycode"
-                  className="bg-gray-700 text-neutral-200"
-                  value={verifyCode}
-                  onChange={(e) => {
-                    setVerifyCode(e.target.value);
-                  }}
-                  required
-                />
-              </LabelInputContainer>
-
-              <button
-                className="bg-slate-950 relative group/btn w-full text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
-                type="submit"
-              >
-                Verify &rarr;
-                <BottomGradient />
-              </button>
-
-              <div className="bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-700 to-transparent my-4 h-[1px] w-full" />
-
-              <div className="flex justify-center -mb-10">
-                <p className="text-neutral-100 text-l max-w-sm dark:text-neutral-300">
-                  Didn't receive an email?{" "}
-                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-violet-500">
-                    Resend Code
-                  </span>
-                </p>
-              </div>
-            </form>
-          </div>
+          <VerifyEmail username={username} email={email} password={password} />
         )}
       </div>
     </div>
@@ -314,11 +368,11 @@ const LabelInputContainer: React.FC<{ className?: string; children: React.ReactN
   };
   
   
-  const BottomGradient = () => {
-    return (
-      <>
-        <span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
-        <span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-orange-400 to-transparent" />
-      </>
-    );
-  };
+const BottomGradient = () => {
+  return (
+    <>
+      <span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
+      <span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-orange-400 to-transparent" />
+    </>
+  );
+};
