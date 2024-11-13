@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import Image from "next/image";
 
 
-import { set, z } from "zod";
+import { z } from "zod";
 import { signUpSchema } from "@/lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { handleCredentialsSignIn, handleCredentialsSignUp, handelResendVerficationCode } from "@/app/actions/authActions";
+import { handleCredentialsSignUp } from "@/app/actions/authActions";
 
 
 import { Label } from "@/components/ui/label";
@@ -28,15 +28,9 @@ export default function SignUp() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
-  const [verifyCode, setVerifyCode] = useState("");
 
   const [globalMessage, setGlobalMessage] = useState("");
   const [globalSuccess, setGlobalSuccess] = useState("none");
-  
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
-  const [countdown, setCountdown] = useState(60);
-  const [isResendEnabled, setIsResendEnabled] = useState(false);
-
 
   // Sign-up form logic
   const {
@@ -81,120 +75,6 @@ export default function SignUp() {
       setGlobalMessage("An unexpected error occurred.");
     }
   };
-
-
-  // Countdown logic
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setIsResendEnabled(true);
-    }
-  }, [countdown]);
-
-
-  // Resend verification code logic
-  const handleResendClick = async () => {
-    const result: ServerActionResponse = await handelResendVerficationCode(email);
-    if (result.success) {
-      setCountdown(60);
-      setIsResendEnabled(false);
-      setGlobalMessage(result.message);
-      setGlobalSuccess("true");
-    } else {
-      setGlobalMessage(result.message);
-      setGlobalSuccess("false");
-    }
-  };
-
-
-  // OTP input handling logic
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const { key } = e;
-      if (!/^[0-9]$/.test(key) && key !== 'Backspace' && key !== 'Delete' && key !== 'Tab' && !e.metaKey) {
-        e.preventDefault();
-      }
-
-      if (key === 'Delete' || key === 'Backspace') {
-        const index = inputsRef.current.indexOf(e.target as HTMLInputElement);
-        if (index > 0) {
-          inputsRef.current[index - 1]!.value = '';
-          inputsRef.current[index - 1]!.focus();
-        }
-      }
-    };
-
-    const handleInput = (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      const index = inputsRef.current.indexOf(target);
-      if (target.value && index < inputsRef.current.length - 1) {
-        inputsRef.current[index + 1]!.focus();
-      }
-    };
-
-    const handleFocus = (e: FocusEvent) => {
-      (e.target as HTMLInputElement).select();
-    };
-
-    const handlePaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      const text = e.clipboardData?.getData('text');
-      if (text && /^[0-9]{4}$/.test(text)) {
-        text.split('').forEach((char, i) => {
-          if (inputsRef.current[i]) inputsRef.current[i]!.value = char;
-        });
-      }
-    };
-
-    inputsRef.current.forEach((input) => {
-      input?.addEventListener('input', handleInput);
-      input?.addEventListener('keydown', handleKeyDown);
-      input?.addEventListener('focus', handleFocus);
-      input?.addEventListener('paste', handlePaste);
-    });
-
-    return () => {
-      inputsRef.current.forEach((input) => {
-        input?.removeEventListener('input', handleInput);
-        input?.removeEventListener('keydown', handleKeyDown);
-        input?.removeEventListener('focus', handleFocus);
-        input?.removeEventListener('paste', handlePaste);
-      });
-    };
-  }, []);
-
-
-  // Email Verification logic
-  const verifyEmailCode = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/verify-code", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, verifyCode }),
-      });
-
-      const data = await response.json();
-      console.log(data);
-      if(response.ok) {
-        await handleCredentialsSignIn({email, password});
-        setGlobalMessage(data.message);
-        setGlobalSuccess("true");
-      } else {
-        setGlobalMessage(data.message);
-        setGlobalSuccess("false");
-      }
-    } catch (error) {
-      console.log("Something went wrong. Please try again.");
-      setGlobalMessage("Something went wrong. Please try again.");
-      setGlobalSuccess("false");
-    }
-  };
-
 
   return (
     <div className="h-[100vh] overflow-y-auto">
