@@ -41,6 +41,7 @@ export default function SignUp() {
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       username: "",
+      fullname: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -99,20 +100,34 @@ export default function SignUp() {
             </p>
 
             <form className="my-8" onSubmit={handleSubmit(onSubmit)}>
-
-              <LabelInputContainer className="mb-4">
-                <Label htmlFor="email" className="text-neutral-200 mb-1.5">
-                  Email Address
-                </Label>
-                <Input
-                  id="email"
-                  placeholder="test@gmail.com"
-                  type="email"
-                  className="bg-gray-700 text-neutral-200"
-                  {...register("email")}
-                />
-                {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-              </LabelInputContainer>
+              <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mb-4">
+                <LabelInputContainer>
+                  <Label htmlFor="email" className="text-neutral-200 mb-1.5">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    placeholder="test@gmail.com"
+                    type="email"
+                    className="bg-gray-700 text-neutral-200"
+                    {...register("email")}
+                  />
+                  {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+                </LabelInputContainer>
+                <LabelInputContainer>
+                  <Label htmlFor="fullName" className="text-neutral-200 mb-1.5">
+                    Ful; Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Enter your Full Name"
+                    type="text"
+                    className="bg-gray-700 text-neutral-200"
+                    {...register("fullname")}
+                  />
+                  {errors.fullname && <p className="text-red-500 text-sm">{errors.fullname.message}</p>}
+                </LabelInputContainer>
+              </div>
 
               <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mb-2">
                 <LabelInputContainer className="mb-4">

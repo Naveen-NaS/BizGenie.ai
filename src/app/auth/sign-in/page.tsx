@@ -45,7 +45,7 @@ export default function SignUp() {
   const onSubmit = async (values: z.infer<typeof signInSchema>) => {
     try {
       console.log("Values: ", values);
-      const result: AuthError | undefined = await handleCredentialsSignIn(values);
+      const result = await handleCredentialsSignIn(values);
       if (result) {
         setGlobalMessage(result.message);
         setGlobalSuccess("false");

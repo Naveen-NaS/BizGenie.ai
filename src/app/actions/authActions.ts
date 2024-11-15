@@ -5,6 +5,8 @@ import { signUpSchema } from "@/schemas/signUpSchema";
 import { AuthError } from "next-auth";
 import { sendVerificationEmail } from '@/helpers/sendVerificationEmail';
 
+import { CustomError } from '@/utils/CustomError';
+
 import prisma from "@/lib/prisma";
 import bcryptjs from "bcryptjs";
 
@@ -27,7 +29,7 @@ export async function handleCredentialsSignIn({ email, password }: {
                     return {
                         type: error.type,
                         name: error.name,
-                        message: 'An error occurred'
+                        message: 'An unknown error occurred'
                     }
             }
         }
@@ -39,8 +41,9 @@ export async function handleSignOut() {
     await signOut();
 }
 
-export async function handleCredentialsSignUp({ username, email, password, confirmPassword, referralCode, verifyCode, verifyCodeExpiry}: {
+export async function handleCredentialsSignUp({ username, fullname, email, password, confirmPassword, referralCode, verifyCode, verifyCodeExpiry}: {
     username: string,
+    fullname: string,
     email: string,
     password: string,
     confirmPassword: string,
@@ -91,6 +94,7 @@ export async function handleCredentialsSignUp({ username, email, password, confi
             await prisma.user.create({
                 data: {
                     username,
+                    fullname,
                     email,
                     password: hashedPassword,
                     emailVerifyCode: verifyCode,

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { auth } from "@/auth";
 import { handleSignOut } from "@/app/actions/authActions";
 
 import { FloatingDock } from "@/components/ui/floating-dock";
@@ -14,20 +13,13 @@ import {
   IconBrowser,
 } from "@tabler/icons-react";
 
-import { Session } from "next-auth";
+import { useSession } from "next-auth/react"
 
 const Navbar: React.FC = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const { data: session } = useSession()
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const fetchSession = async () => {
-      const response = await fetch("/api/session");
-      const data = await response.json();
-      setSession(data.session);
-    };
-    fetchSession();
-
     const handleScroll = () => {
       setScrolled(window.scrollY > 0);
     };
@@ -117,21 +109,24 @@ const Navbar: React.FC = () => {
 
         <div className="flex items-center space-x-4">
           {!session ? (
-            <Link href="/auth/sign-in">
-              <button className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium rounded-lg group bg-gradient-to-br from-orange-400 via-red-300 to-yellow-200 group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 text-white hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-red-200 dark:focus:ring-red-400">
-                <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                  Sign In
-                </span>
-              </button>
-            </Link>
+              <Link href="/auth/sign-in">
+                <button className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium rounded-lg group bg-gradient-to-br from-orange-400 via-red-300 to-yellow-200 group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 text-white hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-red-200 dark:focus:ring-red-400">
+                  <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                    Sign In
+                  </span>
+                </button>
+              </Link>
           ) : (
-            <form action={handleSignOut}>
-              <button className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium rounded-lg group bg-gradient-to-br from-orange-400 via-red-300 to-yellow-200 group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 text-white hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-red-200 dark:focus:ring-red-400">
-                <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-gray-900 rounded-md group-hover:bg-opacity-0">
-                  Sign Out
-                </span>
-              </button>
-            </form>
+            <>
+              <p className="relative font-bold text-white">Welcome, {session.user?.fullname}</p>
+              <form action={handleSignOut}>
+                <button className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium rounded-lg group bg-gradient-to-br from-orange-400 via-red-300 to-yellow-200 group-hover:from-red-200 group-hover:via-red-300 group-hover:to-yellow-200 text-white hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-red-200 dark:focus:ring-red-400">
+                  <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                    Sign Out
+                  </span>
+                </button>
+              </form>
+            </>
           )}
         </div>
       </div>

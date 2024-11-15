@@ -13,6 +13,7 @@ export const signInSchema = object({
 
 export const signUpSchema = object({
   username: string().min(1, "Username is required"),
+  fullname: string().min(1, "Username is required"),
   email: string({ required_error: "Email is required" })
           .min(1, "Email is required.")
           .email("Invalid email"),
