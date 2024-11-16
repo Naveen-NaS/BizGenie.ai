@@ -23,13 +23,19 @@ export async function handleCredentialsSignIn({ email, password }: {
                     return {
                         type: error.type,
                         name: error.name,
-                        message: 'Invalid email or password'
+                        message: 'Incorrect email or password'
+                    }
+                case 'CallbackRouteError':
+                    return {
+                        type: error.type,
+                        name: error.name,
+                        message: 'Email is not verified, Please Sign-Up again.'
                     }
                 default:
                     return {
                         type: error.type,
                         name: error.name,
-                        message: 'An unknown error occurred'
+                        message: 'An unknown error occurred, please try again later'
                     }
             }
         }

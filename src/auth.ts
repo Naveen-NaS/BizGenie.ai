@@ -5,6 +5,8 @@ import bcryptjs from "bcryptjs";
 
 import { CustomError } from '@/utils/CustomError';
 
+import { CredentialsSignin } from "next-auth";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -21,22 +23,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (!user) {
-          throw new CustomError('No user found with this email.');
-          // throw new Error('No user found with this email.');
-          // return { success: false, message: "No user found with this email." };
+          throw new CredentialsSignin("Invalid credentials");
         }
-
+      
         if (!user.isEmailVerified) {
-          throw new Error('Email is not verified, Please Sign-Up again.');
+          throw new Error("Email is not verified, Please Sign-Up again.");
         }
-
+      
         const isPasswordValid = await bcryptjs.compare(credentials.password, user.password);
-
-        if (isPasswordValid) {
-          return user;
-        } else {
-          throw new Error('Invalid password');
+        if (!isPasswordValid) {
+          throw new CredentialsSignin("Invalid password.");
         }
+      
+        return user;
+
+        // if (!user) {
+        //   throw new CustomError('No user found with this email.');
+        //   // throw new Error('No user found with this email.');
+        //   // return { success: false, message: "No user found with this email." };
+        // }
+
+        // if (!user.isEmailVerified) {
+        //   throw new Error('Email is not verified, Please Sign-Up again.');
+        // }
+
+        // const isPasswordValid = await bcryptjs.compare(credentials.password, user.password);
+
+        // if (isPasswordValid) {
+        //   return user;
+        // } else {
+        //   throw new Error('Invalid password');
+        // }
       },
     }),
   ],
